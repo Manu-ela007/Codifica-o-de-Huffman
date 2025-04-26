@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "tabela_de_frequencias.h"
+#include <stdbool.h>
 
 void nova_tabela_de_frequencias(Tabela_de_frequencias *tab /* por referência */)
 {
