@@ -18,8 +18,8 @@ typedef long double R128;
 // tipo boolean
 typedef enum
 {
-    falso,
-    verdadeiro
+    false,
+    true
 } boolean;
 
 #endif

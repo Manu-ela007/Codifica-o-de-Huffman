@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "codigo.h"
+#include "gerar_codigo.h"
 #include "tabela_de_frequencias.h"
 
 boolean novo_no_de_arvore_binaria_ext(Ptr_de_no_de_arvore_binaria *novo,
-                                    Ptr_de_no_de_arvore_binaria esq,
-                                    Elemento inf,
-                                    Ptr_de_no_de_arvore_binaria dir)
+                                      Ptr_de_no_de_arvore_binaria esq,
+                                      Elemento inf,
+                                      Ptr_de_no_de_arvore_binaria dir)
 {
     *novo = (Ptr_de_no_de_arvore_binaria)malloc(sizeof(Struct_do_no_de_arvore_binaria));
     if (*novo == NULL)
@@ -17,38 +19,54 @@ boolean novo_no_de_arvore_binaria_ext(Ptr_de_no_de_arvore_binaria *novo,
     return true;
 }
 
-void print_huffman_tree(Ptr_de_no_de_arvore_binaria nodo, int nivel)
+void print_huffman_tree(Ptr_de_no_de_arvore_binaria nodo, int nivel, int is_right)
 {
     if (nodo == NULL)
     {
-        printf("Árvore de Huffman vazia ou não formada corretamente.\n");
         return;
     }
-    // Imprime primeiro a subárvore direita com indentação maior
-    print_huffman_tree(nodo->direita, nivel + 4);
 
-    // Imprime espaços em branco conforme o nível
-    for (int i = 0; i < nivel; i++)
-        putchar(' ');
+    // Imprime a subárvore direita primeiro
+    print_huffman_tree(nodo->direita, nivel + 1, 1);
 
-    // Se for folha, mostra o caractere; senão, marcador '*'
+    // Imprime a indentação
+    for (int i = 0; i < nivel - 1; i++)
+    {
+        printf("    ");
+    }
+
+    if (nivel > 0)
+    {
+        if (is_right)
+        {
+            printf(" /");
+        }
+        else
+        {
+            printf(" \\");
+        }
+    }
+
+    // Imprime o nó atual
     if (nodo->esquerda == NULL && nodo->direita == NULL)
     {
-        // Folha: caractere + frequência
         U8 b = nodo->informacao.byte;
         if ((b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z'))
-            printf("'%c':%u\n", b, nodo->informacao.frequencia);
+        {
+            printf("-- '%c':%u\n", b, nodo->informacao.frequencia);
+        }
         else
-            printf("0x%02X:%u\n", b, nodo->informacao.frequencia);
+        {
+            printf("-- 0x%02X:%u\n", b, nodo->informacao.frequencia);
+        }
     }
     else
     {
-        // Nodo interno: apenas frequência
-        printf("*:%u\n", nodo->informacao.frequencia);
+        printf("-- *:%u\n", nodo->informacao.frequencia);
     }
 
     // Imprime a subárvore esquerda
-    print_huffman_tree(nodo->esquerda, nivel + 4);
+    print_huffman_tree(nodo->esquerda, nivel + 1, 0);
 }
 
 int main()
@@ -92,54 +110,111 @@ int main()
         }
     }
 
-    // Construir árvore de Huffman usando busca dos dois menores
+    /*Manter nodos ativos no início da tabela, faz uma fila de prioridade, mantendo nodos
+    Com menor frequencia nas posições iniciais*/
+    junte_nodos_no_inicio_do_vetor(&tabela);
+
+    // Construção da árvore
     while (tabela.quantidade_de_posicoes_preenchidas > 1)
     {
-        int min1 = -1, min2 = -1;
-        // Encontra os dois índices com menor frequência
-        for (int i = 0; i < 256; i++)
-        {
-            if (tabela.vetor[i] == NULL)
-                continue;
-            if (min1 < 0 || tabela.vetor[i]->informacao.frequencia < tabela.vetor[min1]->informacao.frequencia)
-            {
-                min2 = min1;
-                min1 = i;
-            }
-            else if (min2 < 0 || tabela.vetor[i]->informacao.frequencia < tabela.vetor[min2]->informacao.frequencia)
-            {
-                min2 = i;
-            }
-        }
+        // Organiza os nodos (função existente)
+        junte_nodos_no_inicio_do_vetor(&tabela);
 
-        // Desenfileira os dois menores
-        Ptr_de_no_de_arvore_binaria esquerda = tabela.vetor[min1];
-        Ptr_de_no_de_arvore_binaria direita = tabela.vetor[min2];
+        // Pega os 2 primeiros (menores frequências)
+        Ptr_de_no_de_arvore_binaria esq = tabela.vetor[0];
+        Ptr_de_no_de_arvore_binaria dir = tabela.vetor[1];
 
-        // Cria elemento com frequência somada
+        // Cria novo elemento
         Elemento elem;
-        elem.byte = '*'; // marcador genérico para nodos internos
-        elem.frequencia = esquerda->informacao.frequencia + direita->informacao.frequencia;
+        elem.byte = 0; // Valor irrelevante para nós internos
+        elem.frequencia = esq->informacao.frequencia + dir->informacao.frequencia;
 
-        // Cria o novo nodo com os dois como filhos
+        // Cria novo nó
         Ptr_de_no_de_arvore_binaria novo;
-        if (!novo_no_de_arvore_binaria_ext(&novo, esquerda, elem, direita))
+        if (!novo_no_de_arvore_binaria_ext(&novo, esq, elem, dir))
         {
-            printf("Erro: falha ao alocar novo nodo da árvore de Huffman\n");
-            break;
+            printf("Falha na criação do nó.\n");
+            return 1;
         }
 
-        // Insere o novo nodo no lugar de min1 e libera min2
-        tabela.vetor[min1] = novo;
-        tabela.vetor[min2] = NULL;
+        // Atualiza tabela
+        tabela.vetor[0] = novo;
+        tabela.vetor[1] = NULL;
         tabela.quantidade_de_posicoes_preenchidas--;
     }
 
-    if (tabela.vetor[0])
-    {
-        printf("\nÁrvore de Huffman:");
-        print_huffman_tree(tabela.vetor[0], 0);
+    Codigo tabela_de_codigos[256] = {0};
+    Codigo codigoAtual;
+    novo_codigo(&codigoAtual);
+
+    gerar_codigo(tabela.vetor[0], tabela_de_codigos, &codigoAtual);
+
+    arquivo = fopen("frase_huffman.txt", "rb");
+    FILE *compactado = fopen("compactado.bin", "wb");
+    
+    if (!arquivo || !compactado) {
+        printf("Erro ao abrir arquivos.\n");
+        return 1;
     }
+
+    unsigned char buffer = 0;
+    int contador_bits = 0;
+
+    while (fread(&byte, sizeof(U8), 1, arquivo) == 1) {
+        Codigo *codigo = &tabela_de_codigos[byte];
+        
+        for (int j = 0; j < codigo->tamanho; j++) {
+            int byte_index = j / 8;
+            int bit_index = 7 - (j % 8);
+            int bit = (codigo->byte[byte_index] >> bit_index) & 1;
+            
+            // Adiciona bit ao buffer
+            buffer = (buffer << 1) | bit;
+            contador_bits++;
+            
+            // Buffer cheio? Escreve no arquivo
+            if (contador_bits == 8) {
+                fwrite(&buffer, 1, 1, compactado);
+                buffer = 0;
+                contador_bits = 0;
+            }
+        }
+    }
+    
+    // Escreve bits restantes
+    if (contador_bits > 0) {
+        buffer <<= (8 - contador_bits);
+        fwrite(&buffer, 1, 1, compactado);
+    }
+
+    fseek(arquivo, 0, SEEK_END);
+    long tamanho_original = ftell(arquivo);
+    fseek(compactado, 0, SEEK_END);
+    long tamanho_compactado = ftell(compactado);
+    
+    fclose(arquivo);
+    fclose(compactado);
+
+        // (Momentâneo, retirar para apresentar ao Maligno) Compactação
+    printf("Compactação concluída!\n");
+    printf("Tamanho original: %ld bytes\n", tamanho_original);
+    printf("Tamanho compactado: %ld bytes\n", tamanho_compactado);
+    printf("Taxa de compressão: %.2f%%\n", (1 - (float)tamanho_compactado/tamanho_original)*100);
+
+
+    free_codigo(&codigoAtual);
+    for (int i = 0; i < 256; i++)
+    {
+        if (tabela_de_codigos[i].tamanho > 0)
+        {
+            free_codigo(&tabela_de_codigos[i]);
+        }
+    }
+
+    // (Momentâneo, retirar para apresentar ao Maligno) Exibição da árvore
+    printf("\nArvore de Huffman (visualizacao):\n\n");
+    print_huffman_tree(tabela.vetor[0], 0, 0);
+    printf("\n");
 
     return 0;
 }
