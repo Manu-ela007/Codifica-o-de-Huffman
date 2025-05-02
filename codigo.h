@@ -1,24 +1,21 @@
-#ifndef CODIGO
-#define CODIGO
-#include "meustiposonlinegdb.h"
+#ifndef CODIGO_H
+#define CODIGO_H
 
-typedef struct
-{
-    U8* byte; /* vetor dinâmico de bytes */;
-    U8  capacidade; /* em bits */;
-    U8  tamanho; /* em bits */
+#include <stdbool.h>
+
+typedef unsigned char U8;
+
+typedef struct {
+    U8 *byte;
+    int tamanho;
+    int capacidade;
 } Codigo;
 
-boolean novo_codigo (Codigo* c /* por referência */);
-void free_codigo (Codigo* c /* por referência */);
-
-boolean adiciona_bit (Codigo* c /* por referência */,
-                      U8 valor /* 0 ou 1 */);
-boolean joga_fora_bit (Codigo* c /* por referência */);
-
-boolean clone (Codigo original, /* por valor */
-               Codigo* copia /* por referencia */);
-
+bool novo_codigo(Codigo *c);
+bool adiciona_bit(Codigo *c, U8 valor);
+bool joga_fora_bit(Codigo *c);
+bool clone(Codigo original, Codigo *copia);
 void imprime_codigo(Codigo *c);
+void free_codigo(Codigo *c);
 
 #endif
